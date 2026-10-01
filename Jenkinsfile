@@ -13,8 +13,10 @@ pipeline {
             steps {
                 checkout scm
 
+                echo "========================================="
+                echo "Checkout completed"
                 echo "Jenkins Workspace: ${env.WORKSPACE}"
-                echo "Project Directory: ${pwd()}"
+                echo "========================================="
             }
         }
 
@@ -23,15 +25,40 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "Checking project files..."
+                    echo "Checking required project files..."
 
                     test -f "${WORKSPACE}/docker-compose.yml"
                     test -f "${WORKSPACE}/backend/Dockerfile"
                     test -f "${WORKSPACE}/frontend/Dockerfile"
                     test -f "${WORKSPACE}/nginx/nginx.conf"
 
-                    echo "Required files found."
+                    echo "All required project files found."
                 '''
+            }
+        }
+
+        stage('Create Backend Environment') {
+            steps {
+
+                withCredentials([
+                    file(
+                        credentialsId: 'cultural-storytelling-env',
+                        variable: 'BACKEND_ENV_FILE'
+                    )
+                ]) {
+
+                    sh '''
+                        set -e
+
+                        echo "Creating backend environment file..."
+
+                        cp "$BACKEND_ENV_FILE" "${WORKSPACE}/backend/.env"
+
+                        chmod 600 "${WORKSPACE}/backend/.env"
+
+                        echo "Backend .env created successfully."
+                    '''
+                }
             }
         }
 
@@ -42,7 +69,9 @@ pipeline {
 
                     cd "${WORKSPACE}"
 
-                    echo "Building Docker images..."
+                    echo "========================================="
+                    echo "Building Docker images"
+                    echo "========================================="
 
                     docker compose build
                 '''
@@ -56,15 +85,19 @@ pipeline {
 
                     cd "${WORKSPACE}"
 
-                    echo "Stopping old containers..."
+                    echo "========================================="
+                    echo "Stopping old containers"
+                    echo "========================================="
 
                     docker compose down
 
-                    echo "Starting application..."
+                    echo "========================================="
+                    echo "Starting new containers"
+                    echo "========================================="
 
                     docker compose up -d
 
-                    echo "Deployment completed."
+                    echo "Containers started successfully."
                 '''
             }
         }
@@ -76,18 +109,26 @@ pipeline {
 
                     cd "${WORKSPACE}"
 
-                    echo "Waiting for containers..."
+                    echo "========================================="
+                    echo "Waiting for containers"
+                    echo "========================================="
+
                     sleep 10
 
-                    echo "Container status:"
+                    echo "========================================="
+                    echo "Docker Compose Status"
+                    echo "========================================="
+
                     docker compose ps
 
-                    echo "Testing backend through Nginx..."
+                    echo "========================================="
+                    echo "Testing API"
+                    echo "========================================="
 
                     curl -f http://localhost/api/stories
 
                     echo ""
-                    echo "Application is responding successfully."
+                    echo "API is responding successfully."
                 '''
             }
         }
@@ -97,38 +138,53 @@ pipeline {
 
         success {
             echo "========================================="
-            echo "Deployment Successful"
-            echo "Workspace: ${env.WORKSPACE}"
-            echo "Application: http://13.221.119.26"
+            echo "DEPLOYMENT SUCCESSFUL"
+            echo "========================================="
+            echo "Build Number : ${env.BUILD_NUMBER}"
+            echo "Workspace    : ${env.WORKSPACE}"
+            echo "Application  : http://13.221.119.26"
             echo "========================================="
         }
 
         failure {
             echo "========================================="
-            echo "Deployment Failed"
-            echo "Workspace: ${env.WORKSPACE}"
-            echo "Showing container status and logs..."
+            echo "DEPLOYMENT FAILED"
+            echo "========================================="
+            echo "Build Number : ${env.BUILD_NUMBER}"
+            echo "Workspace    : ${env.WORKSPACE}"
             echo "========================================="
 
             sh '''
                 cd "${WORKSPACE}" || exit 0
 
-                docker compose ps || true
-
-                echo "----- Backend Logs -----"
-                docker compose logs --tail=50 backend || true
-
-                echo "----- Frontend Logs -----"
-                docker compose logs --tail=50 frontend || true
-
-                echo "----- Nginx Logs -----"
-                docker compose logs --tail=50 nginx || true
-            '''
-        }
-
-        always {
-            echo "Jenkins build completed: ${env.BUILD_NUMBER}"
-        }
+                echo "========================================="
     }
 }
+                echo "Docker Compose Status"
+                echo "========================================="
+
+        }
+                docker compose ps || true
+
+                echo "========================================="
+            echo "Jenkins build completed: ${env.BUILD_NUMBER}"
+        always {
+                echo "Backend Logs"
+                echo "========================================="
+
+
+                docker compose logs --tail=50 backend || true
+        }
+
+            '''
+
+                docker compose logs --tail=50 nginx || true
+                echo "========================================="
+                echo "========================================="
+                echo "Nginx Logs"
+                echo "Frontend Logs"
+                echo "========================================="
+                echo "========================================="
+
+
 
