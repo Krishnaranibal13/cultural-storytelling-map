@@ -2,7 +2,7 @@ import axios from "axios";
 
 // single place to point the app at a backend, overridable per environment
 export const API_BASE_URL =
-    process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+    process.env.REACT_APP_API_URL || "/api";
 
 // builds an absolute url for media the backend serves from /uploads
 export const mediaUrl = (path) => {
